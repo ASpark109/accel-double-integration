@@ -3,31 +3,22 @@ import numpy as np
 import math
 import pygame
 from scipy import integrate
-from scipy.misc import derivative
 import matplotlib.pyplot as plt
-import time
 from pykalman import KalmanFilter
 from scipy.signal import savgol_filter
-# WIN = pygame.display.set_mode((2340, 780))
-# COLOR = (200, 200, 200)
+
+WIN = pygame.display.set_mode((2340, 780))
+COLOR = (200, 200, 200)
 
 freq = 1/30 #Hz
 
-# def draw_window(x):
-#     WIN.fill((0, 0, 0))
+def draw_window(x):
+    WIN.fill((0, 0, 0))
 
-#     pygame.draw.rect(WIN, COLOR, (x*100 + 500, 500, 5, 5))
+    pygame.draw.rect(WIN, COLOR, (x*100 + 500, 500, 5, 5))
 
-#     pygame.display.update()
+    pygame.display.update()
 
-# def s():
-
-#     d = []
-
-#     for i in range(3000):
-#         d.append([i, math.sin(math.pi/1000*i)])
-    
-#     return np.array(d)
 def savitzky_golay_filter(data, window_size, polyorder):
     filtered_data = savgol_filter(data, window_size, polyorder)
     return filtered_data
@@ -35,7 +26,6 @@ def savitzky_golay_filter(data, window_size, polyorder):
 def f(a, b, freq):
     kx = (b - a) / freq
     bx = a
-    # print("Func -> y = {}x + {}".format(kx, bx))
 
     return ((kx, bx))
 
@@ -47,7 +37,7 @@ def kalman_filter(data):
     filtered_data = kf.em(data).smooth(data)[0]
     return filtered_data
 
-def i(data, freq, p):
+def integral(data, freq, p):
     vel = 0
 
     out = [[0,0]]
@@ -58,14 +48,10 @@ def i(data, freq, p):
 
         out.append([i+1, vel])
     
-
-
-    # print(vel)
     return np.array(out)
 
-def main():
-
-    file = open("filter.csv")
+def read_data(file_name):
+    file = open(file_name)
     data = csv.reader(file)
 
     next(data)
@@ -74,38 +60,28 @@ def main():
     for r in data:
         d = np.array([[float(r[0].split(";")[1]),float(r[0].split(";")[2])]])
         acc = np.r_[acc, d]
-
-    b = np.reshape(savitzky_golay_filter(acc[:, 0], 3, 1), (-1,1))
-    # b = kalman_filter(acc[:, 0])
     
-    print(b)
+    return acc
 
-    out = i(b, freq, 0)
+def main():
 
-    # print(out)
+    accel = read_data("filter.csv")
 
-    velout = i(out, freq, 1)
-    # print(velout)
+    filtred_accel = np.reshape(savitzky_golay_filter(accel[:, 0], 3, 1), (-1,1))
 
-    # a = i(s(), freq, 1)
-    # k = i(a, freq, 1)
+    velocity = integral(filtred_accel, freq, 0)
+    displacement = integral(velocity, freq, 1)
 
-    # plt.plot(a[:, 0], a[:, 1], color='r')
-    # plt.plot(s()[:, 0], s()[:, 1], color='g')
-    # plt.plot(k[:, 0], k[:, 1], color='y')
 
-    plt.plot(velout[:, 0], velout[:, 1], color='r', label='s')
-    plt.plot(out[:, 0], out[:, 1], color='g', label='v')
-    plt.plot(acc[:, 0], color='b', label='a')
-    plt.plot(b, color='y', label='filtered')
+    plt.plot(displacement[:, 0], displacement[:, 1], color='r', label='s')
+    plt.plot(velocity[:, 0], velocity[:, 1], color='g', label='v')
+    plt.plot(accel[:, 0], color='b', label='a')
+    plt.plot(filtred_accel, color='y', label='filtered')
     plt.title('Графік швидкості/Графік переміщення')
     plt.xlabel('x-axis')
     plt.ylabel('y-axis')
     plt.legend()
     plt.grid()
-
-    # plt.ylim([-0.5, 0.5])
-    # plt.xlim([0, 1000])
     plt.show()
 
 
